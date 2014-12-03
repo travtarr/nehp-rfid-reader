@@ -1,4 +1,4 @@
-package com.nehp.rfid_system.reader;
+package com.nehp.rfid_system.reader.windows;
 
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
@@ -10,29 +10,38 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 
+import com.intermec.datacollection.rfid.BRIReader;
+import com.intermec.datacollection.rfid.RFIDButtonAdapter;
+import com.nehp.rfid_system.reader.Launcher;
+import com.nehp.rfid_system.reader.helpers.SimpleSignal;
+import com.nehp.rfid_system.reader.server_connection.Server;
+
 public class MainWindow {
 
 	protected Shell shell;
-
+	private Server server;
+	
+	private BRIReader          m_Reader = null;
+	private RFIDButtonAdapter  m_RFIDCenterBtnAdapter = null;
+	private String             m_sFieldSchema = "ANT";
+	private boolean            m_fContinuousReadInProgress = false;
+	
+	Display display = null;
+	
 	/**
-	 * Launch the application.
-	 * @param args
+	 * 
 	 */
-	public static void main(String[] args) {
-		try {
-			MainWindow window = new MainWindow();
-			window.open();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	public MainWindow(Display display, Server server){
+		this.display = display;
+		this.server = server;
 	}
-
+	
 	/**
 	 * Open the window.
+	 * @wbp.parser.entryPoint
 	 */
 	public void open() {
-		final Display display = Display.getDefault();
-		createContents(display);
+		createContents();
 		shell.open();
 		shell.layout();
 		while (!shell.isDisposed()) {
@@ -44,12 +53,16 @@ public class MainWindow {
 
 	/**
 	 * Create contents of the window.
+	 * 
 	 */
-	protected void createContents(final Display display) {
+	protected void createContents() {
 		shell = new Shell(display, SWT.NO_TRIM | SWT.ON_TOP);
 		shell.setSize(480, 640);
 		shell.setText("NEHP Tracker");
 		
+		/**
+		 * Main Title of App
+		 */
 		Label lblAppTitle = new Label(shell, SWT.NONE);
 		lblAppTitle.setForeground(SWTResourceManager.getColor(SWT.COLOR_LINK_FOREGROUND));
 		lblAppTitle.setBackground(SWTResourceManager.getColor(SWT.COLOR_TITLE_BACKGROUND_GRADIENT));
@@ -68,7 +81,8 @@ public class MainWindow {
 				boolean confirm = MessageDialog.openConfirm(shell, "Exit", "Do you want to exit?");
 				if(confirm){
 					// TODO: need to close connections to server and RFID reader
-					display.dispose();
+					shell.close();
+					shell.dispose();
 				}
 			}
 		});
