@@ -13,6 +13,10 @@ import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.impl.SimpleLogger;
+import org.slf4j.impl.SimpleLoggerFactory;
 
 import com.nehp.rfid_system.reader.windows.MainWindow;
 import com.sun.jersey.api.client.Client;
@@ -24,10 +28,13 @@ import javax.ws.rs.core.MultivaluedMap;
 
 /**
  * This class provides the necessary methods to send and receive data to/from the server.
- * @author Trav
+ * @author Travis Tarr
  *
  */
 public class Server {
+	
+	private final SimpleLoggerFactory factory = new SimpleLoggerFactory();
+	private final Logger LOG = factory.getLogger("Server");
 	
 	private final String GRANT_TYPE = "password";
 	
@@ -55,6 +62,7 @@ public class Server {
 		if( !progressBar.isDisposed() ) {
 			
 			if( !hasInternetConnection() ){
+				LOG.info("No internet connection");
 				return false;
 			}
 			progressBar.setEnabled(true);
@@ -79,11 +87,11 @@ public class Server {
 			try { Thread.sleep(100); } catch (InterruptedException e) {}
 			
 			if(response.getStatus() != 200){
-				System.out.println("Bad response: " + response.getStatus());
+				LOG.warn("Bad Response: {}", response.getStatus());
 				return false;
 			}
 			
-			System.out.println("Good response");
+			LOG.info("Good response");
 			
 			JSONObject obj = new JSONObject(response.getEntity(String.class));
 			JSONArray array = obj.getJSONArray("api_key");
@@ -96,12 +104,12 @@ public class Server {
 			progressBar.setSelection(100);
 			try { Thread.sleep(100); } catch (InterruptedException e) {}
 						
-			System.out.println("Connected with token: [" + access_token + "]");
+			LOG.info("Connected with token: [{}]", access_token);
 		}
 	
 		progressBar.setVisible(false);
 		
-		System.out.println("Login executed");
+		LOG.info("Login executed");
 		return true;
 	}
 		
@@ -132,10 +140,10 @@ public class Server {
 			}
 		} catch (UnknownHostException e) {
 			// do nothing - boolean defaulted false
-			System.out.println("unknown host");
+			LOG.warn("unknown host");
 		} catch (IOException e) {
 			// do nothing - boolean defaulted false
-			System.out.println("IOexception");
+			LOG.warn("IOexception");
 		} 
 		return connected;
 	}
