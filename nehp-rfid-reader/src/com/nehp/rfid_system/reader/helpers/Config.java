@@ -15,7 +15,7 @@ public class Config {
 		Properties prop = new Properties();
 		String propFileName = "config.properties";
 
-		InputStream inputStream = getClass().getClassLoader()
+		InputStream inputStream = getClass()
 				.getResourceAsStream(propFileName);
 
 		if (inputStream != null) {

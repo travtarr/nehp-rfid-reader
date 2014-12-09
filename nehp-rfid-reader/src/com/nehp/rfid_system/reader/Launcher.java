@@ -23,18 +23,9 @@ public class Launcher {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		Server server = new Server(config.getAddress(), config.getUser(), config.getPassword());
-		
-		// Attempt to login
-		if(!server.login()){
-			System.out.println("Unable to login");
-		}
-			
-		MainWindow mainWindow = new MainWindow(display, server);
-		//Loading loading = new Loading(display);
-		//loading.open();
+		MainWindow mainWindow = new MainWindow(display, config);
 		mainWindow.open();
-		
+				
 	}
 	
 	public static void main(String[] args) {
