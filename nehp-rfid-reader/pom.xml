@@ -4,6 +4,7 @@
 	<groupId>nehp-rfid-reader</groupId>
 	<artifactId>nehp-rfid-reader</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
 	<name>nehp-rfid-reader</name>
 
 	<dependencies>
@@ -37,19 +38,52 @@
 			<artifactId>slf4j-simple</artifactId>
 			<version>1.7.7</version>
 		</dependency>
-
-
+		<dependency>
+			<groupId>org.eclipse</groupId>
+			<artifactId>jface</artifactId>
+			<version>3.3.0-I20070606-0010</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse</groupId>
+			<artifactId>swt</artifactId>
+			<version>3.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.intermec.rfid</groupId>
+			<artifactId>BasicRFID</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.intermec.rfid</groupId>
+			<artifactId>BRIReader</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.intermec.rfid</groupId>
+			<artifactId>DataCollection</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.intermec.rfid</groupId>
+			<artifactId>RFID</artifactId>
+			<version>1.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<plugins>
 			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
+				<artifactId>maven-assembly-plugin</artifactId>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<archive>
+						<manifest>
+							<mainClass>com.nehp.rfid_system.reader.Launcher</mainClass>
+						</manifest>
+					</archive>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
 				</configuration>
 			</plugin>
 		</plugins>

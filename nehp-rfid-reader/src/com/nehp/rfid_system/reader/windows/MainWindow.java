@@ -74,9 +74,13 @@ public class MainWindow {
 	private Text text_currentUser;
 	private Button btnSingle;
 	private Button btnMulti;
+	private int currentPage;
 
 	private final String[] STAGES = { "MODELING", "KITTING", "MANUFACTURING",
 			"QA/QC", "SHIPPED", "ARRIVAL", "INSTALLED", "STOPPED" };
+	private final String SELECT_STAGE = "Select Stage";
+	private final int SINGLE_PAGE = 0;
+	private final int MULTI_PAGE = 1;
 
 	/**
 	 * 
@@ -397,14 +401,14 @@ public class MainWindow {
 
 		final ToolItem tltmSelectStage = new ToolItem(toolBar, SWT.DROP_DOWN);
 		tltmSelectStage.setWidth(70);
-		tltmSelectStage.setText("Select Stage");
+		tltmSelectStage.setText(SELECT_STAGE);
 
-		Button btnRefresh = new Button(compSingle, SWT.NONE);
-		FormData fd_btnRefresh = new FormData();
-		fd_btnRefresh.top = new FormAttachment(lblSingleTitle, 0, SWT.TOP);
-		fd_btnRefresh.right = new FormAttachment(100, -10);
-		btnRefresh.setLayoutData(fd_btnRefresh);
-		btnRefresh.setText("Refresh");
+		Button btnSingleRefresh = new Button(compSingle, SWT.NONE);
+		FormData fd_btnSingleRefresh = new FormData();
+		fd_btnSingleRefresh.top = new FormAttachment(lblSingleTitle, 0, SWT.TOP);
+		fd_btnSingleRefresh.right = new FormAttachment(100, -10);
+		btnSingleRefresh.setLayoutData(fd_btnSingleRefresh);
+		btnSingleRefresh.setText("Refresh");
 
 		final Menu menu = new Menu(shell, SWT.POP_UP);
 
@@ -414,11 +418,9 @@ public class MainWindow {
 			item.setText(STAGES[i]);
 			final String status = STAGES[i];
 			item.addSelectionListener(new SelectionListener() {
-				@Override
 				public void widgetDefaultSelected(SelectionEvent arg0) {
 				}
 
-				@Override
 				public void widgetSelected(SelectionEvent arg0) {
 					tltmSelectStage.setText(status);
 				}
@@ -427,7 +429,6 @@ public class MainWindow {
 		}
 
 		tltmSelectStage.addListener(SWT.Selection, new Listener() {
-			@Override
 			public void handleEvent(Event event) {
 				if (event.detail == SWT.ARROW) {
 					Rectangle rect = tltmSelectStage.getBounds();
@@ -443,26 +444,24 @@ public class MainWindow {
 		 * Switch between pages
 		 */
 		btnSingle.addSelectionListener(new SelectionListener() {
-			@Override
 			public void widgetSelected(SelectionEvent event) {
+				currentPage = SINGLE_PAGE;
 				stkLayout.topControl = compSingle;
 				setSingleRead();
 				sharedPanel.layout();
 			}
 
-			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 			}
 		});
 		btnMulti.addSelectionListener(new SelectionListener() {
-			@Override
 			public void widgetSelected(SelectionEvent event) {
+				currentPage = MULTI_PAGE;
 				stkLayout.topControl = compMultiple;
 				setMultiRead();
 				sharedPanel.layout();
 			}
 
-			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 			}
 		});
@@ -471,11 +470,9 @@ public class MainWindow {
 		 * Send Back
 		 */
 		btnSendBack.addSelectionListener(new SelectionListener() {
-			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 			}
 
-			@Override
 			public void widgetSelected(SelectionEvent arg0) {
 				btnSendBack.setVisible(false);
 				compSingleConfirm.setVisible(true);
@@ -486,11 +483,9 @@ public class MainWindow {
 		});
 
 		btnConfirmCancel.addSelectionListener(new SelectionListener() {
-			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 			}
 
-			@Override
 			public void widgetSelected(SelectionEvent arg0) {
 				btnSendBack.setVisible(true);
 				compSingleConfirm.setVisible(false);
@@ -501,12 +496,14 @@ public class MainWindow {
 		});
 
 		btnConfirmConfirm.addSelectionListener(new SelectionListener() {
-			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 			}
 
-			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (tltmSelectStage.getText().equals(SELECT_STAGE)){
+					MessageDialog.openWarning(shell, "Warning", "Please select a stage to continue.");
+					return;
+				}
 				btnSendBack.setVisible(true);
 				compSingleConfirm.setVisible(false);
 				btnStageComplete.setEnabled(true);
@@ -516,15 +513,23 @@ public class MainWindow {
 		});
 
 		btnStageComplete.addSelectionListener(new SelectionListener() {
-			@Override
 			public void widgetDefaultSelected(SelectionEvent arg0) {
 			}
 
-			@Override
 			public void widgetSelected(SelectionEvent arg0) {
 				// TODO: send data to server while updating progress bar
 				// TODO: show confirmation of success or show error
 				LOG.info("Stage completed");
+			}
+		});
+		
+		/**
+		 * Refresh the current RFID data
+		 */
+		btnSingleRefresh.addSelectionListener(new SelectionListener() {
+			public void widgetDefaultSelected(SelectionEvent arg0) {}
+			public void widgetSelected(SelectionEvent arg0) {
+				updateSingle();
 			}
 		});
 
@@ -553,7 +558,6 @@ public class MainWindow {
 		// Adds a tag listener for continuous reading mode.
 		m_Reader.addTagEventListener(new TagEventListener(){
 
-			@Override
 			public void tagRead(TagEvent tagEvent) {
 				Tag tag = tagEvent.getTag();
 				TableItem item = new TableItem(table, SWT.NONE);
@@ -583,8 +587,10 @@ public class MainWindow {
 						try {
 							// Read all tags in the field.
 							if (m_Reader.read() == true) {
-								if (m_Reader.getTagCount() > 0)
+								if (m_Reader.getTagCount() > 0) {
 									text_rfid.setText(m_Reader.tags[0].toString());
+									updateSingle();
+								}
 							} else {
 								LOG.info("NO tags read\n");
 							}
@@ -654,7 +660,6 @@ public class MainWindow {
 				}
 			};
 		}
-
 		return m_RFIDTriggerMultiAdapter;
 	}
 
@@ -663,9 +668,11 @@ public class MainWindow {
 	 * Sets up the RFID Button listener to read a single tag.
 	 */
 	private void setSingleRead() {
-		if (m_RFIDTriggerMultiAdapter != null)
-			m_Reader.removeRFIDButtonListener(m_RFIDTriggerMultiAdapter);
-		m_Reader.addRFIDButtonListener(getTriggerSingleAdapter());
+		if(m_Reader != null){
+			if (m_RFIDTriggerMultiAdapter != null)
+				m_Reader.removeRFIDButtonListener(m_RFIDTriggerMultiAdapter);
+			m_Reader.addRFIDButtonListener(getTriggerSingleAdapter());
+		}
 	}
 	
 
@@ -674,9 +681,11 @@ public class MainWindow {
 	 * released.
 	 */
 	private void setMultiRead() {
-		if (m_RFIDTriggerSingleAdapter != null)
-			m_Reader.removeRFIDButtonListener(m_RFIDTriggerSingleAdapter);
-		m_Reader.addRFIDButtonListener(getTriggerMultiAdapter());
+		if (m_Reader != null) {
+			if (m_RFIDTriggerSingleAdapter != null)
+				m_Reader.removeRFIDButtonListener(m_RFIDTriggerSingleAdapter);
+			m_Reader.addRFIDButtonListener(getTriggerMultiAdapter());
+		}
 	}
 	
 	
@@ -685,6 +694,14 @@ public class MainWindow {
 	 */
 	private void updateTable() {
 		// TODO: send tags to server and retrieve status of each
+	}
+	
+	
+	/**
+	 * Updates the 'Single' page according to the RFID number in the text_rfid field.
+	 */
+	private void updateSingle() {
+		
 	}
 
 	
