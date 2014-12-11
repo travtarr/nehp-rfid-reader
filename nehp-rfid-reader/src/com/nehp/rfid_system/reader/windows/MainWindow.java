@@ -17,8 +17,16 @@ import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.events.TouchEvent;
+import org.eclipse.swt.events.TouchListener;
+import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.ImageLoader;
+import org.eclipse.swt.graphics.Path;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+
 import com.intermec.datacollection.rfid.BRIReader;
 import com.intermec.datacollection.rfid.BasicReaderException;
 import com.intermec.datacollection.rfid.RFIDButtonAdapter;
@@ -46,6 +54,7 @@ import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.widgets.Group;
 import org.slf4j.Logger;
 import org.slf4j.impl.SimpleLoggerFactory;
+import org.eclipse.swt.widgets.Canvas;
 
 public class MainWindow {
 
@@ -75,12 +84,20 @@ public class MainWindow {
 	private Button btnSingle;
 	private Button btnMulti;
 	private int currentPage;
+	private int lastPage;
+	
+	private Composite sharedPanel;
+	private StackLayout stkLayout;
+	private Composite compSingle;
+	private Composite compMultiple;
+	private Composite signPanel;
 
 	private final String[] STAGES = { "MODELING", "KITTING", "MANUFACTURING",
 			"QA/QC", "SHIPPED", "ARRIVAL", "INSTALLED", "STOPPED" };
 	private final String SELECT_STAGE = "Select Stage";
 	private final int SINGLE_PAGE = 0;
 	private final int MULTI_PAGE = 1;
+	private final int SIGN_PAGE = 2;
 
 	/**
 	 * 
@@ -97,10 +114,10 @@ public class MainWindow {
 		shell = new Shell(display, SWT.NO_TRIM | SWT.ON_TOP);
 
 		createContents();
-		setupReader();
+		//setupReader();
 		shell.open();
 		shell.layout();
-		startServerConn();
+		//startServerConn();
 
 		while (!shell.isDisposed()) {
 			if (!display.readAndDispatch()) {
@@ -184,15 +201,15 @@ public class MainWindow {
 		/**
 		 * Shared Panel
 		 */
-		final Composite sharedPanel = new Composite(shell, SWT.NONE);
+		sharedPanel = new Composite(shell, SWT.NONE);
 		sharedPanel.setLayoutData(new RowData(470, 532));
-		final StackLayout stkLayout = new StackLayout();
+		stkLayout = new StackLayout();
 		sharedPanel.setLayout(stkLayout);
 
 		/**
 		 * Multiple Panel
 		 */
-		final Composite compMultiple = new Composite(sharedPanel, SWT.NONE);
+		compMultiple = new Composite(sharedPanel, SWT.NONE);
 		compMultiple.setBackground(SWTResourceManager.getColor(204, 204, 255));
 		compMultiple.pack();
 
@@ -235,7 +252,7 @@ public class MainWindow {
 		/**
 		 * Single Panel
 		 */
-		final Composite compSingle = new Composite(sharedPanel, SWT.NONE);
+		compSingle = new Composite(sharedPanel, SWT.NONE);
 		compSingle.setBackground(SWTResourceManager.getColor(204, 204, 255));
 		compSingle.setLayout(new FormLayout());
 
@@ -366,7 +383,101 @@ public class MainWindow {
 		text_currentUser = new Text(grpLastStatusChange, SWT.BORDER);
 		text_currentUser.setEditable(false);
 		text_currentUser.setBounds(311, 24, 118, 21);
+		
+		
+		/**
+		 * Signature Panel
+		 */
+		signPanel = new Composite(sharedPanel, SWT.NONE);
+		signPanel.setBackground(SWTResourceManager.getColor(204, 204, 255));
+		signPanel.setLayout(new FormLayout());
+		
+		Label lblSignature = new Label(signPanel, SWT.NONE);
+		lblSignature.setFont(SWTResourceManager.getFont("Segoe UI", 12, SWT.BOLD));
+		FormData fd_lblSignature = new FormData();
+		fd_lblSignature.top = new FormAttachment(0, 10);
+		fd_lblSignature.right = new FormAttachment(100, -196);
+		lblSignature.setLayoutData(fd_lblSignature);
+		lblSignature.setText("Signature");
+		
+		final Canvas canvas = new Canvas(signPanel, SWT.NONE);
+		canvas.setTouchEnabled(true);
+		FormData fd_canvas = new FormData();
+		fd_canvas.bottom = new FormAttachment(lblSignature, 113, SWT.BOTTOM);
+		fd_canvas.right = new FormAttachment(0, 445);
+		fd_canvas.top = new FormAttachment(lblSignature, 13);
+		fd_canvas.left = new FormAttachment(0, 25);
+		canvas.setLayoutData(fd_canvas);
+		
+		Button btnSignCancel = new Button(signPanel, SWT.NONE);
+		FormData fd_btnSignCancel = new FormData();
+		fd_btnSignCancel.top = new FormAttachment(canvas, 48);
+		fd_btnSignCancel.left = new FormAttachment(canvas, 0, SWT.LEFT);
+		btnSignCancel.setLayoutData(fd_btnSignCancel);
+		btnSignCancel.setText("Cancel");
+		
+		btnSignCancel.addSelectionListener(new SelectionListener(){
+			public void widgetDefaultSelected(SelectionEvent arg0) {}
+			public void widgetSelected(SelectionEvent arg0) {
+				switchPage(lastPage);
+			}	
+		});
+		
+		Button btnSignConfirm = new Button(signPanel, SWT.NONE);
+		FormData fd_btnSignConfirm = new FormData();
+		fd_btnSignConfirm.bottom = new FormAttachment(btnSignCancel, 0, SWT.BOTTOM);
+		fd_btnSignConfirm.right = new FormAttachment(canvas, 0, SWT.RIGHT);
+		btnSignConfirm.setLayoutData(fd_btnSignConfirm);
+		btnSignConfirm.setText("Confirm");
+		
+		btnSignConfirm.addSelectionListener(new SelectionListener(){
+			public void widgetDefaultSelected(SelectionEvent arg0) {}
+			public void widgetSelected(SelectionEvent arg0) {
+				
+				// save the signature as a PNG
+				Image drawable = new Image(display, canvas.getBounds());
+				GC gc = new GC(canvas);
+				gc.copyArea(drawable, 0, 0);
+				ImageLoader loader = new ImageLoader();
+				loader.data = new ImageData[] { drawable.getImageData() };
+				
+				// TODO: save signature image to server as blob
+				
+				//loader.save("C:\\Users\\ttarr\\test.png", SWT.IMAGE_PNG);
+			}
+			
+		});
+		
+		// add the drawable signature area
+		Listener listener = new Listener(){
+			int lastX = 0, lastY = 0;
+			GC gc;
+			public void handleEvent(Event event) {
+				switch (event.type){
+					case SWT.TOUCHSTATE_MOVE:
+						gc.drawLine(lastX,  lastY,  event.x, event.y);
+						lastX = event.x;
+						lastY = event.y;
+						break;
+						
+					case SWT.TOUCHSTATE_DOWN:
+						canvas.addListener(SWT.TOUCHSTATE_MOVE, this);
+						gc = new GC(canvas);
+						lastX = event.x;
+						lastY = event.y;
+						break;
+					
+					case SWT.TOUCHSTATE_UP:
+						canvas.removeListener(SWT.TOUCHSTATE_MOVE, this);
+						gc.dispose();
+						break;
+				}
+			}
+		};
+		canvas.addListener(SWT.TOUCHSTATE_DOWN, listener);
+		canvas.addListener(SWT.TOUCHSTATE_UP,  listener);
 
+		
 		/**
 		 * Confirm Sending Item Back
 		 */
@@ -445,10 +556,7 @@ public class MainWindow {
 		 */
 		btnSingle.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent event) {
-				currentPage = SINGLE_PAGE;
-				stkLayout.topControl = compSingle;
-				setSingleRead();
-				sharedPanel.layout();
+				switchPage(SINGLE_PAGE);
 			}
 
 			public void widgetDefaultSelected(SelectionEvent arg0) {
@@ -456,10 +564,7 @@ public class MainWindow {
 		});
 		btnMulti.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent event) {
-				currentPage = MULTI_PAGE;
-				stkLayout.topControl = compMultiple;
-				setMultiRead();
-				sharedPanel.layout();
+				switchPage(MULTI_PAGE);
 			}
 
 			public void widgetDefaultSelected(SelectionEvent arg0) {
@@ -478,7 +583,6 @@ public class MainWindow {
 				compSingleConfirm.setVisible(true);
 				btnStageComplete.setEnabled(false);
 				btnStageComplete.setVisible(false);
-				LOG.info("isConnected: {}", server.isConnected());
 			}
 		});
 
@@ -508,6 +612,11 @@ public class MainWindow {
 				compSingleConfirm.setVisible(false);
 				btnStageComplete.setEnabled(true);
 				btnStageComplete.setVisible(true);
+				// TODO: send data to server
+				
+				// open signature panel
+				switchPage(SIGN_PAGE);
+				
 				LOG.info("Confirming stage: {}", tltmSelectStage.getText());
 			}
 		});
@@ -519,6 +628,10 @@ public class MainWindow {
 			public void widgetSelected(SelectionEvent arg0) {
 				// TODO: send data to server while updating progress bar
 				// TODO: show confirmation of success or show error
+				
+				// open signature panel
+				switchPage(SIGN_PAGE);
+				
 				LOG.info("Stage completed");
 			}
 		});
@@ -534,6 +647,36 @@ public class MainWindow {
 		});
 
 	}
+	
+	/**
+	 * Switches to the indicated page.
+	 * @param to - the page to be opened
+	 */
+	private void switchPage(int to){
+		switch (to) {
+			case SINGLE_PAGE:
+				lastPage = currentPage;
+				currentPage = SINGLE_PAGE;
+				stkLayout.topControl = compSingle;
+				sharedPanel.layout();
+				break;
+				
+			case MULTI_PAGE:
+				lastPage = currentPage;
+				currentPage = MULTI_PAGE;
+				stkLayout.topControl = compMultiple;
+				sharedPanel.layout();
+				break;
+				
+			case SIGN_PAGE:
+				lastPage = currentPage;
+				currentPage = SIGN_PAGE;
+				stkLayout.topControl = signPanel;
+				sharedPanel.layout();
+				break;
+		}
+	}
+	
 
 	/**
 	 * Sets up the RFID reader.
@@ -543,7 +686,7 @@ public class MainWindow {
 			m_Reader = new BRIReader();
 		} catch (BasicReaderException bre) {
 			MessageDialog.openError(shell,
-					"Exception occurs during reader connection",
+					"Error occurs during reader connection",
 					"Please verify the RFID reader is charged and turned on.");
 			return;
 		}
