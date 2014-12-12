@@ -220,10 +220,16 @@ public class MainWindow {
 				SWT.BOLD));
 		lblMultiTitle.setBounds(10, 10, 340, 32);
 
-		TableViewer tableViewer = new TableViewer(compMultiple, SWT.BORDER
+		
+		final Composite multiData = new Composite(compMultiple, SWT.NONE);
+		final StackLayout multiStkLayout = new StackLayout();
+		multiData.setLayout(multiStkLayout);
+		multiData.setBounds(10, 48, 450, 412);
+		
+		TableViewer tableViewer = new TableViewer(multiData, SWT.BORDER
 				| SWT.FULL_SELECTION);
 		table = tableViewer.getTable();
-		table.setBounds(10, 48, 450, 380);
+		table.setBounds(10, 48, 450, 412);
 		table.setHeaderVisible(true);
 
 		TableViewerColumn tableViewerColumn = new TableViewerColumn(
@@ -247,6 +253,89 @@ public class MainWindow {
 		tblclmnCurrentStatus.setResizable(false);
 		tblclmnCurrentStatus.setWidth(106);
 		tblclmnCurrentStatus.setText("Current Status");
+		
+		final Button btnMultiComplete = new Button(compMultiple, SWT.NONE);
+		btnMultiComplete.setText("Stage Complete");
+		btnMultiComplete.setForeground(SWTResourceManager.getColor(0, 0, 0));
+		btnMultiComplete.setBounds(323, 466, 137, 56);
+		
+		final Button btnMultiSendBack = new Button(compMultiple, SWT.NONE);
+		btnMultiSendBack.setText("Send Back");
+		btnMultiSendBack.setForeground(SWTResourceManager.getColor(0, 0, 0));
+		btnMultiSendBack.setBounds(10, 466, 137, 56);
+		
+		final Button btnMultiRefresh = new Button(compMultiple, SWT.NONE);
+		btnMultiRefresh.setBounds(384, 10, 76, 25);
+		btnMultiRefresh.setText("Refresh");
+		
+		/**
+		 * Confirm Sending Item Back
+		 */
+		final Composite compMultiConfirm = new Composite(multiData,
+				SWT.BORDER);
+		FormData fd_btnMultiComplete = new FormData();
+		fd_btnMultiComplete.top = new FormAttachment(compMultiConfirm, 93);
+		FormData fd_compMultiConfirm = new FormData();
+		fd_compMultiConfirm.bottom = new FormAttachment(compMultiConfirm, 178,
+				SWT.BOTTOM);
+		fd_compMultiConfirm.right = new FormAttachment(0, 460);
+		fd_compMultiConfirm.top = new FormAttachment(compMultiConfirm, 31);
+		fd_compMultiConfirm.left = new FormAttachment(0, 10);
+		compMultiConfirm.setLayoutData(fd_compMultiConfirm);
+		compMultiConfirm.setVisible(false);
+
+		Label lblMultiSendBackTo = new Label(compMultiConfirm, SWT.NONE);
+		lblMultiSendBackTo.setFont(SWTResourceManager.getFont("Segoe UI", 10,
+				SWT.BOLD));
+		lblMultiSendBackTo.setBounds(10, 10, 253, 25);
+		lblMultiSendBackTo.setText("Send Back to Which Stage?");
+
+		Button btnMultiConfirmCancel = new Button(compMultiConfirm, SWT.NONE);
+		btnMultiConfirmCancel.setBounds(10, 108, 75, 25);
+		btnMultiConfirmCancel.setText("Cancel");
+
+		Button btnMultiConfirmConfirm = new Button(compMultiConfirm, SWT.NONE);
+		btnMultiConfirmConfirm.setBounds(361, 108, 75, 25);
+		btnMultiConfirmConfirm.setText("Confirm");
+
+		final ToolBar toolBarMulti = new ToolBar(compMultiConfirm, SWT.FLAT
+				| SWT.RIGHT);
+		toolBarMulti.setBounds(20, 45, 164, 31);
+
+		final ToolItem tltmSelectStageMulti = new ToolItem(toolBarMulti, SWT.DROP_DOWN);
+		tltmSelectStageMulti.setWidth(70);
+		tltmSelectStageMulti.setText(SELECT_STAGE);
+
+
+		final Menu menuMulti = new Menu(shell, SWT.POP_UP);
+
+		// Sets the options of the drop-down selection for stages
+		for (int i = 0; i < STAGES.length; i++) {
+			MenuItem item = new MenuItem(menuMulti, SWT.PUSH);
+			item.setText(STAGES[i]);
+			final String status = STAGES[i];
+			item.addSelectionListener(new SelectionListener() {
+				public void widgetDefaultSelected(SelectionEvent arg0) {
+				}
+
+				public void widgetSelected(SelectionEvent arg0) {
+					tltmSelectStageMulti.setText(status);
+				}
+
+			});
+		}
+
+		tltmSelectStageMulti.addListener(SWT.Selection, new Listener() {
+			public void handleEvent(Event event) {
+				if (event.detail == SWT.ARROW) {
+					Rectangle rect = tltmSelectStageMulti.getBounds();
+					Point pt = new Point(rect.x, rect.y + rect.height);
+					pt = toolBarMulti.toDisplay(pt);
+					menuMulti.setLocation(pt.x, pt.y);
+					menuMulti.setVisible(true);
+				}
+			}
+		});
 		
 
 		/**
@@ -277,21 +366,23 @@ public class MainWindow {
 		final Button btnStageComplete = new Button(compSingle, SWT.NONE);
 		btnStageComplete.setForeground(SWTResourceManager.getColor(0, 0, 0));
 		FormData fd_btnStageComplete = new FormData();
-		fd_btnStageComplete.right = new FormAttachment(100, -28);
+		fd_btnStageComplete.bottom = new FormAttachment(100, -10);
+		fd_btnStageComplete.left = new FormAttachment(0, 323);
 		btnStageComplete.setLayoutData(fd_btnStageComplete);
 		btnStageComplete.setText("Stage Complete");
 
 		final Button btnSendBack = new Button(compSingle, SWT.NONE);
-		fd_btnStageComplete.top = new FormAttachment(btnSendBack, 0, SWT.TOP);
 		btnSendBack.setForeground(SWTResourceManager.getColor(0, 0, 0));
 		FormData fd_btnSendBack = new FormData();
-		fd_btnSendBack.bottom = new FormAttachment(100, -22);
-		fd_btnSendBack.left = new FormAttachment(0, 25);
-		fd_btnSendBack.right = new FormAttachment(100, -349);
+		fd_btnSendBack.top = new FormAttachment(btnStageComplete, 0, SWT.TOP);
+		fd_btnSendBack.left = new FormAttachment(lblSingleTitle, 0, SWT.LEFT);
+		fd_btnSendBack.bottom = new FormAttachment(100, -10);
+		fd_btnSendBack.right = new FormAttachment(100, -323);
 		btnSendBack.setLayoutData(fd_btnSendBack);
 		btnSendBack.setText("Send Back");
 
 		Composite compSingleData = new Composite(compSingle, SWT.NONE);
+		fd_btnStageComplete.right = new FormAttachment(compSingleData, 0, SWT.RIGHT);
 		FormData fd_compSingleData2 = new FormData();
 		fd_compSingleData2.left = new FormAttachment(0, 10);
 		fd_compSingleData2.top = new FormAttachment(0, 40);
@@ -393,7 +484,8 @@ public class MainWindow {
 		signPanel.setLayout(new FormLayout());
 		
 		Label lblSignature = new Label(signPanel, SWT.NONE);
-		lblSignature.setFont(SWTResourceManager.getFont("Segoe UI", 12, SWT.BOLD));
+		lblSignature.setFont(SWTResourceManager.getFont("Segoe UI", 16, SWT.BOLD));
+		lblSignature.setBackground(SWTResourceManager.getColor(204, 204, 255));
 		FormData fd_lblSignature = new FormData();
 		fd_lblSignature.top = new FormAttachment(0, 10);
 		fd_lblSignature.right = new FormAttachment(100, -196);
@@ -411,7 +503,9 @@ public class MainWindow {
 		
 		Button btnSignCancel = new Button(signPanel, SWT.NONE);
 		FormData fd_btnSignCancel = new FormData();
-		fd_btnSignCancel.top = new FormAttachment(canvas, 48);
+		fd_btnSignCancel.top = new FormAttachment(canvas, 19);
+		fd_btnSignCancel.bottom = new FormAttachment(canvas, 73, SWT.BOTTOM);
+		fd_btnSignCancel.right = new FormAttachment(canvas, 133);
 		fd_btnSignCancel.left = new FormAttachment(canvas, 0, SWT.LEFT);
 		btnSignCancel.setLayoutData(fd_btnSignCancel);
 		btnSignCancel.setText("Cancel");
@@ -426,9 +520,28 @@ public class MainWindow {
 		Button btnSignConfirm = new Button(signPanel, SWT.NONE);
 		FormData fd_btnSignConfirm = new FormData();
 		fd_btnSignConfirm.bottom = new FormAttachment(btnSignCancel, 0, SWT.BOTTOM);
+		fd_btnSignConfirm.top = new FormAttachment(canvas, 19);
 		fd_btnSignConfirm.right = new FormAttachment(canvas, 0, SWT.RIGHT);
 		btnSignConfirm.setLayoutData(fd_btnSignConfirm);
 		btnSignConfirm.setText("Confirm");
+		
+		Button btnSignReset = new Button(signPanel, SWT.NONE);
+		fd_btnSignConfirm.left = new FormAttachment(btnSignReset, 22);
+		FormData fd_btnSignReset = new FormData();
+		fd_btnSignReset.right = new FormAttachment(btnSignCancel, 132, SWT.RIGHT);
+		fd_btnSignReset.bottom = new FormAttachment(btnSignCancel, 0, SWT.BOTTOM);
+		fd_btnSignReset.top = new FormAttachment(canvas, 19);
+		fd_btnSignReset.left = new FormAttachment(btnSignCancel, 22);
+		btnSignReset.setLayoutData(fd_btnSignReset);
+		btnSignReset.setText("Reset");
+		
+		btnSignReset.addSelectionListener(new SelectionListener() {
+			public void widgetDefaultSelected(SelectionEvent arg0) {}
+			public void widgetSelected(SelectionEvent arg0) {
+				canvas.redraw();
+			}
+			
+		});
 		
 		btnSignConfirm.addSelectionListener(new SelectionListener(){
 			public void widgetDefaultSelected(SelectionEvent arg0) {}
@@ -483,6 +596,7 @@ public class MainWindow {
 		 */
 		final Composite compSingleConfirm = new Composite(compSingle,
 				SWT.BORDER);
+		fd_btnStageComplete.top = new FormAttachment(compSingleConfirm, 93);
 		FormData fd_compSingleConfirm = new FormData();
 		fd_compSingleConfirm.bottom = new FormAttachment(compSingleData, 178,
 				SWT.BOTTOM);
@@ -516,6 +630,7 @@ public class MainWindow {
 
 		Button btnSingleRefresh = new Button(compSingle, SWT.NONE);
 		FormData fd_btnSingleRefresh = new FormData();
+		fd_btnSingleRefresh.left = new FormAttachment(100, -86);
 		fd_btnSingleRefresh.top = new FormAttachment(lblSingleTitle, 0, SWT.TOP);
 		fd_btnSingleRefresh.right = new FormAttachment(100, -10);
 		btnSingleRefresh.setLayoutData(fd_btnSingleRefresh);
@@ -552,7 +667,7 @@ public class MainWindow {
 		});
 
 		/**
-		 * Switch between pages
+		 * Switch between main navigation pages
 		 */
 		btnSingle.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent event) {
@@ -572,7 +687,7 @@ public class MainWindow {
 		});
 
 		/**
-		 * Send Back
+		 * Send Back Single
 		 */
 		btnSendBack.addSelectionListener(new SelectionListener() {
 			public void widgetDefaultSelected(SelectionEvent arg0) {
@@ -583,6 +698,9 @@ public class MainWindow {
 				compSingleConfirm.setVisible(true);
 				btnStageComplete.setEnabled(false);
 				btnStageComplete.setVisible(false);
+				
+				// make sure user has only one way to exit this window
+				setNavEnabled(false);
 			}
 		});
 
@@ -596,6 +714,8 @@ public class MainWindow {
 				btnStageComplete.setEnabled(true);
 				btnStageComplete.setVisible(true);
 				LOG.info("Cancelling");
+				
+				setNavEnabled(true);
 			}
 		});
 
@@ -617,6 +737,8 @@ public class MainWindow {
 				// open signature panel
 				switchPage(SIGN_PAGE);
 				
+				setNavEnabled(true);
+				
 				LOG.info("Confirming stage: {}", tltmSelectStage.getText());
 			}
 		});
@@ -633,6 +755,90 @@ public class MainWindow {
 				switchPage(SIGN_PAGE);
 				
 				LOG.info("Stage completed");
+			}
+		});
+		
+		/**
+		 * Multiple page Listeners
+		 */
+		
+		btnMultiSendBack.addSelectionListener(new SelectionListener(){
+			public void widgetDefaultSelected(SelectionEvent arg0) {}
+			public void widgetSelected(SelectionEvent arg0) {
+				multiStkLayout.topControl = compMultiConfirm;
+				multiData.layout();
+				btnMultiSendBack.setVisible(false);
+				btnMultiComplete.setVisible(false);
+				btnMultiRefresh.setVisible(false);
+				
+				// make sure user has only one way to exit this window
+				setNavEnabled(false);
+			}
+			
+		});
+		
+		btnMultiConfirmCancel.addSelectionListener(new SelectionListener() {
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+			}
+
+			public void widgetSelected(SelectionEvent arg0) {
+				multiStkLayout.topControl = table;
+				multiData.layout();
+				btnMultiSendBack.setVisible(true);
+				btnMultiComplete.setVisible(true);
+				btnMultiRefresh.setVisible(true);
+				LOG.info("Cancelling");
+				
+				setNavEnabled(true);
+			}
+		});
+
+		btnMultiConfirmConfirm.addSelectionListener(new SelectionListener() {
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+			}
+
+			public void widgetSelected(SelectionEvent arg0) {
+				if (tltmSelectStageMulti.getText().equals(SELECT_STAGE)){
+					MessageDialog.openWarning(shell, "Warning", "Please select a stage to continue.");
+					return;
+				}
+				btnMultiSendBack.setVisible(true);
+				compMultiConfirm.setVisible(false);
+				btnMultiComplete.setEnabled(true);
+				btnMultiComplete.setVisible(true);
+				// TODO: send data to server
+				
+				// open signature panel
+				switchPage(SIGN_PAGE);
+				
+				setNavEnabled(true);
+				
+				LOG.info("Confirming stage: {}", tltmSelectStage.getText());
+			}
+		});
+
+		btnMultiComplete.addSelectionListener(new SelectionListener() {
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+			}
+
+			public void widgetSelected(SelectionEvent arg0) {
+				// TODO: send data to server while updating progress bar
+				// TODO: show confirmation of success or show error
+				
+				// open signature panel
+				switchPage(SIGN_PAGE);
+				
+				LOG.info("Stage completed");
+			}
+		});
+		
+		/**
+		 * Refresh the current RFID data
+		 */
+		btnMultiRefresh.addSelectionListener(new SelectionListener() {
+			public void widgetDefaultSelected(SelectionEvent arg0) {}
+			public void widgetSelected(SelectionEvent arg0) {
+				updateMulti();
 			}
 		});
 		
@@ -794,7 +1000,7 @@ public class MainWindow {
 							progressBarInd.setEnabled(false);
 							
 							// update status of table items from server
-							updateTable();
+							updateMulti();
 							
 						} catch (BasicReaderException e) {
 							LOG.error(e.getMessage());
@@ -805,7 +1011,17 @@ public class MainWindow {
 		}
 		return m_RFIDTriggerMultiAdapter;
 	}
-
+	
+	
+	private void setNavEnabled(boolean set){
+		if (set) {
+			btnSingle.setEnabled(true);
+			btnMulti.setEnabled(true);
+		} else {
+			btnSingle.setEnabled(false);
+			btnMulti.setEnabled(false);
+		}
+	}
 	
 	/**
 	 * Sets up the RFID Button listener to read a single tag.
@@ -835,7 +1051,7 @@ public class MainWindow {
 	/**
 	 * Updates the status of each item in the table with data from the server.
 	 */
-	private void updateTable() {
+	private void updateMulti() {
 		// TODO: send tags to server and retrieve status of each
 	}
 	

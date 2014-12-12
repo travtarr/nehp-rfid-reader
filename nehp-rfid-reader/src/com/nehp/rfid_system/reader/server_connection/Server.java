@@ -42,7 +42,7 @@ public class Server {
 	private String user = null;
 	private String password = null;
 	
-	private String access_token = null;
+	private String accessToken = null;
 	private MainWindow mainWindow;
 	
 	public Server(String address, String user, String password, MainWindow mainWindow){
@@ -99,12 +99,12 @@ public class Server {
 			progressBar.setSelection(75);
 			try { Thread.sleep(100); } catch (InterruptedException e) {}
 			
-			access_token = array.getJSONObject(0).getJSONObject("access_token").getString("string");
+			accessToken = array.getJSONObject(0).getJSONObject("accessToken").getString("string");
 
 			progressBar.setSelection(100);
 			try { Thread.sleep(100); } catch (InterruptedException e) {}
 						
-			LOG.info("Connected with token: [{}]", access_token);
+			LOG.info("Connected with token: [{}]", accessToken);
 		}
 	
 		progressBar.setVisible(false);
@@ -112,18 +112,161 @@ public class Server {
 		LOG.info("Login executed");
 		return true;
 	}
+	
+	
+	public boolean sendNextStage(Long item) {
+		String service = "/service/item/nextstage";
+		JSONObject obj = new JSONObject();
+		obj.append("id", item);
 		
+		ClientResponse response = put(service, obj);
+		
+		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public boolean sendNextStage(Long[] list){
+		String service = "/service/items/nextstage";
+		JSONObject obj = new JSONObject();
+		JSONArray array = new JSONArray(list);
+		obj.append("list", array);
+		
+		ClientResponse response = put(service, obj);
+		
+		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public boolean sendStage(Long item, int stage){
+		String service = "/service/item/sendstage";
+		JSONObject obj = new JSONObject();
+		obj.append("id", item);
+		obj.append("stage", stage);
+		
+		ClientResponse response = put(service, obj);
+		
+		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public boolean sendStage(Long[] list, int stage){
+		String service = "/service/items/sendstage";
+		JSONObject obj = new JSONObject();
+		JSONArray array = new JSONArray(list);
+		obj.append("list", array);
+		obj.append("stage", stage);
+		
+		ClientResponse response = put(service, obj);
+		
+		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public JSONObject getItem(Long item){
+		String service = "/service/item/";
+		ClientResponse response = get(service, item);
+		
+		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
+			return response.getEntity(JSONObject.class);
+		}
+		
+		return null;
+	}
+		
+	public JSONObject getItems(Long[] list){
+		String service = "/service/item/";
+		JSONObject obj = new JSONObject();
+		JSONArray array = new JSONArray(list);
+		
+		obj.append("list", array);
+		
+		ClientResponse response = post(service, obj);
+		
+		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
+			return response.getEntity(JSONObject.class);
+		}
+		
+		return null;
+	}
 	
 	/**
 	 * Determine if server is connected.
 	 * @return
 	 */
 	public boolean isConnected(){
-		if(access_token != null && hasInternetConnection())
+		if(accessToken != null && hasInternetConnection())
 			return true;
 		else
 			return false;
 	}
+	
+	
+	/**
+	 * Base method to send a PUT request to the server.
+	 * 
+	 * @param service - URI of service being requested
+	 * @param obj - JSONObject of the items being requested
+	 * @return
+	 */
+	private ClientResponse put(String service, JSONObject obj){
+		Client client = new Client();
+		ClientResponse response = client
+				.resource(address + service)
+				.header("Authorization", String.format("Bearer %s", accessToken))
+				.type(MediaType.APPLICATION_JSON_TYPE)
+				.put(ClientResponse.class, obj);
+		
+		return response;
+	}
+	
+	/**
+	 * Base method to send a POST request to the server.
+	 * 
+	 * @param service - URI of service being requested
+	 * @param obj - JSONObject of the items being requested
+	 * @return
+	 */
+	private ClientResponse post(String service, JSONObject obj){
+		Client client = new Client();
+		ClientResponse response = client
+				.resource(address + service)
+				.header("Authorization", String.format("Bearer %s", accessToken))
+				.type(MediaType.APPLICATION_JSON_TYPE)
+				.post(ClientResponse.class, obj);
+		
+		return response;
+	}
+	
+	/**
+	 * Base method to send a GET request to the server.
+	 * 
+	 * @param service - URI of service being requested
+	 * @param obj - JSONObject of the items being requested
+	 * @return
+	 */
+	private ClientResponse get(String service, Long item){
+		Client client = new Client();
+		ClientResponse response = client
+				.resource(address + service + "/" + item)
+				.header("Authorization", String.format("Bearer %s", accessToken))
+				.type(MediaType.APPLICATION_JSON_TYPE)
+				.get(ClientResponse.class);
+		
+		return response;
+	}
+		
 	
 	/**
 	 * Determine if client's device has access to the internet.
