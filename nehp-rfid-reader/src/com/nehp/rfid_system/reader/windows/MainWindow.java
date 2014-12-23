@@ -1,5 +1,10 @@
 package com.nehp.rfid_system.reader.windows;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
@@ -55,6 +60,7 @@ import org.eclipse.swt.widgets.Group;
 import org.slf4j.Logger;
 import org.slf4j.impl.SimpleLoggerFactory;
 import org.eclipse.swt.widgets.Canvas;
+import org.joda.time.DateTime;
 
 public class MainWindow {
 
@@ -83,15 +89,19 @@ public class MainWindow {
 	private Text text_currentUser;
 	private Button btnSingle;
 	private Button btnMulti;
+	private ToolItem tltmSelectStage;
+	private ToolItem tltmSelectStageMulti;
 	private int currentPage;
 	private int lastPage;
+	
+	private boolean stage = false;
 	
 	private Composite sharedPanel;
 	private StackLayout stkLayout;
 	private Composite compSingle;
 	private Composite compMultiple;
 	private Composite signPanel;
-
+	
 	private final String[] STAGES = { "MODELING", "KITTING", "MANUFACTURING",
 			"QA/QC", "SHIPPED", "ARRIVAL", "INSTALLED", "STOPPED" };
 	private final String SELECT_STAGE = "Select Stage";
@@ -99,9 +109,6 @@ public class MainWindow {
 	private final int MULTI_PAGE = 1;
 	private final int SIGN_PAGE = 2;
 
-	/**
-	 * 
-	 */
 	public MainWindow(Display display, Config config) {
 		this.display = display;
 		this.config = config;
@@ -114,10 +121,10 @@ public class MainWindow {
 		shell = new Shell(display, SWT.NO_TRIM | SWT.ON_TOP);
 
 		createContents();
-		//setupReader();
+		setupReader();
 		shell.open();
 		shell.layout();
-		//startServerConn();
+		startServerConn();
 
 		while (!shell.isDisposed()) {
 			if (!display.readAndDispatch()) {
@@ -178,12 +185,9 @@ public class MainWindow {
 		 */
 		Composite compProgress = new Composite(shell, SWT.NONE);
 		compProgress.setLayoutData(new RowData(470, SWT.DEFAULT));
-		progressBar = new ProgressBar(compProgress, SWT.NONE);
-		progressBar.setSize(470, 20);
 		progressBarInd = new ProgressBar(compProgress, SWT.INDETERMINATE);
 		progressBarInd.setSize(470, 20);
-		progressBarInd.setVisible(false);
-		progressBarInd.setEnabled(false);
+		
 
 		/**
 		 * Button Menu Bar
@@ -302,7 +306,7 @@ public class MainWindow {
 				| SWT.RIGHT);
 		toolBarMulti.setBounds(20, 45, 164, 31);
 
-		final ToolItem tltmSelectStageMulti = new ToolItem(toolBarMulti, SWT.DROP_DOWN);
+		tltmSelectStageMulti = new ToolItem(toolBarMulti, SWT.DROP_DOWN);
 		tltmSelectStageMulti.setWidth(70);
 		tltmSelectStageMulti.setText(SELECT_STAGE);
 
@@ -554,9 +558,14 @@ public class MainWindow {
 				ImageLoader loader = new ImageLoader();
 				loader.data = new ImageData[] { drawable.getImageData() };
 				
-				// TODO: save signature image to server as blob
+				DateTime now = new DateTime();
+				String tempDir = System.getProperty("java.io.tmpdir");
+				String fullImage = tempDir + now.toString("YYYY-MM-dd-HH-MM-SS") + ".png";
+				LOG.info("Image name: " + fullImage);
+				loader.save(fullImage, SWT.IMAGE_PNG);
 				
-				//loader.save("C:\\Users\\ttarr\\test.png", SWT.IMAGE_PNG);
+				saveToServer(lastPage, fullImage);
+				switchPage(lastPage);
 			}
 			
 		});
@@ -624,7 +633,7 @@ public class MainWindow {
 				| SWT.RIGHT);
 		toolBar.setBounds(20, 45, 164, 31);
 
-		final ToolItem tltmSelectStage = new ToolItem(toolBar, SWT.DROP_DOWN);
+		tltmSelectStage = new ToolItem(toolBar, SWT.DROP_DOWN);
 		tltmSelectStage.setWidth(70);
 		tltmSelectStage.setText(SELECT_STAGE);
 
@@ -732,13 +741,11 @@ public class MainWindow {
 				compSingleConfirm.setVisible(false);
 				btnStageComplete.setEnabled(true);
 				btnStageComplete.setVisible(true);
-				// TODO: send data to server
+				stage = true;
 				
 				// open signature panel
 				switchPage(SIGN_PAGE);
-				
-				setNavEnabled(true);
-				
+								
 				LOG.info("Confirming stage: {}", tltmSelectStage.getText());
 			}
 		});
@@ -752,6 +759,7 @@ public class MainWindow {
 				// TODO: show confirmation of success or show error
 				
 				// open signature panel
+				stage = false;
 				switchPage(SIGN_PAGE);
 				
 				LOG.info("Stage completed");
@@ -806,12 +814,10 @@ public class MainWindow {
 				compMultiConfirm.setVisible(false);
 				btnMultiComplete.setEnabled(true);
 				btnMultiComplete.setVisible(true);
-				// TODO: send data to server
+				stage = true;
 				
 				// open signature panel
 				switchPage(SIGN_PAGE);
-				
-				setNavEnabled(true);
 				
 				LOG.info("Confirming stage: {}", tltmSelectStage.getText());
 			}
@@ -822,8 +828,7 @@ public class MainWindow {
 			}
 
 			public void widgetSelected(SelectionEvent arg0) {
-				// TODO: send data to server while updating progress bar
-				// TODO: show confirmation of success or show error
+				stage = false;
 				
 				// open signature panel
 				switchPage(SIGN_PAGE);
@@ -865,6 +870,7 @@ public class MainWindow {
 				currentPage = SINGLE_PAGE;
 				stkLayout.topControl = compSingle;
 				sharedPanel.layout();
+				setNavEnabled(true);
 				break;
 				
 			case MULTI_PAGE:
@@ -872,6 +878,7 @@ public class MainWindow {
 				currentPage = MULTI_PAGE;
 				stkLayout.topControl = compMultiple;
 				sharedPanel.layout();
+				setNavEnabled(true);
 				break;
 				
 			case SIGN_PAGE:
@@ -879,6 +886,7 @@ public class MainWindow {
 				currentPage = SIGN_PAGE;
 				stkLayout.topControl = signPanel;
 				sharedPanel.layout();
+				setNavEnabled(false);
 				break;
 		}
 	}
@@ -1013,6 +1021,71 @@ public class MainWindow {
 	}
 	
 	
+	/**
+	 * Calls upon the server to send the appropriate data.
+	 * 
+	 * @param page - page from which the signature is for
+	 * @param filename - filename of the signature
+	 */
+	private void saveToServer(final int page, final String filename){
+		
+		progressBarInd.setEnabled(true);
+		progressBarInd.setVisible(true);
+		
+		new Thread() {
+			@Override
+			public void run(){
+				final boolean success;
+				switch( page ){
+					case SINGLE_PAGE:
+						if (stage){
+							success = server.sendStage(Long.parseLong(text_rfid.getText()), tltmSelectStage.getText(), filename);
+						} else {
+							success = server.sendNextStage(Long.parseLong(text_rfid.getText()), filename);
+						}
+						break;
+					case MULTI_PAGE:
+						// create array of id #s
+						TableItem[] tableItems = table.getItems();
+						List<Long> list = new ArrayList<Long>();
+						for (int i = 0; i < tableItems.length; i++){
+							list.add(Long.parseLong(tableItems[i].getText(0)));
+						}
+						Long[] longs = new Long[list.size()];
+						longs = list.toArray(longs);
+						
+						if (stage){
+							success = server.sendStage(longs, tltmSelectStageMulti.getText(), filename);
+						} else {
+							success = server.sendNextStage(longs, filename);
+						}
+						break;
+					default:
+						success = false;
+						break;
+				}
+				
+				progressBarInd.getDisplay().asyncExec(new Runnable() {
+		
+					public void run() {
+						if (!success) {
+							MessageDialog
+									.openInformation(
+											shell,
+											"Warning",
+											"Upload Failed, "
+													+ "Unable to send data to server.");
+						}
+						if(!progressBarInd.isDisposed())
+							progressBarInd.setVisible(false);
+					}
+					
+				});
+			}
+		}.start();
+	}
+	
+	
 	private void setNavEnabled(boolean set){
 		if (set) {
 			btnSingle.setEnabled(true);
@@ -1069,20 +1142,32 @@ public class MainWindow {
 	 */
 	protected void startServerConn() {
 		server = new Server(config.getAddress(), config.getUser(),
-				config.getPassword(), this);
-
-		progressBar.getDisplay().asyncExec(new Runnable() {
+				config.getPassword());
+		
+		progressBarInd.setEnabled(true);
+		progressBarInd.setVisible(true);
+		
+		new Thread() {
+			@Override
 			public void run() {
-				if (!server.login(progressBar)) {
-					MessageDialog
-							.openInformation(
-									shell,
-									"Warning",
-									"Connection failed, "
-											+ "all transactions will be stored until connection is re-established. "
-											+ "Certain data will be blank upon scanning items.");
-				}
+				final boolean success = server.login();
+				progressBarInd.getDisplay().asyncExec(new Runnable() {
+					public void run() {
+						if (!success) {
+							MessageDialog
+									.openInformation(
+											shell,
+											"Warning",
+											"Connection failed, "
+													+ "All transactions will be stored until connection is re-established. "
+													+ "Certain data will be blank upon scanning items.");
+						}
+						if( !progressBarInd.isDisposed() )
+							progressBarInd.setVisible(false);
+					}
+				});
+				
 			}
-		});
+		}.start();
 	}
 }

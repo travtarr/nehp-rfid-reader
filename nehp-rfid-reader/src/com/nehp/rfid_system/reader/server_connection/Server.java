@@ -1,5 +1,6 @@
 package com.nehp.rfid_system.reader.server_connection;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -11,6 +12,8 @@ import javax.ws.rs.core.MultivaluedMap;
 
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
+import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -43,139 +46,145 @@ public class Server {
 	private String password = null;
 	
 	private String accessToken = null;
-	private MainWindow mainWindow;
+
 	
-	public Server(String address, String user, String password, MainWindow mainWindow){
+	public Server(String address, String user, String password){
 		this.address = address;
 		this.user = user;
-		this.password = password;
-		this.mainWindow = mainWindow;
+		this.password = password;;
 	}
 
 	/**
 	 * Logs the client into the server.
-	 * @param progressBar - updates the given progress bar
 	 * @return
 	 */
-	public boolean login(ProgressBar progressBar){
-	
-		if( !progressBar.isDisposed() ) {
-			
-			if( !hasInternetConnection() ){
-				LOG.info("No internet connection");
-				return false;
-			}
-			progressBar.setEnabled(true);
-			progressBar.setSelection(5);
-			
-			Client client = new Client();
+	public boolean login(){
 
-			MultivaluedMap<String, String> formData = new MultivaluedMapImpl();
-			formData.add("grant_type", GRANT_TYPE);
-			formData.add("username", user);
-			formData.add("password", password);
-			
-			progressBar.setSelection(25);
-			try { Thread.sleep(100); } catch (InterruptedException e) {}
-			
-			ClientResponse response = client
-					.resource(address + "/auth/token")
-					.type(MediaType.APPLICATION_FORM_URLENCODED_TYPE)
-					.post(ClientResponse.class, formData);
-			
-			progressBar.setSelection(50);
-			try { Thread.sleep(100); } catch (InterruptedException e) {}
-			
-			if(response.getStatus() != 200){
-				LOG.warn("Bad Response: {}", response.getStatus());
-				return false;
-			}
-			
-			LOG.info("Good response");
-			
-			JSONObject obj = new JSONObject(response.getEntity(String.class));
-			JSONArray array = obj.getJSONArray("api_key");
-			
-			progressBar.setSelection(75);
-			try { Thread.sleep(100); } catch (InterruptedException e) {}
-			
-			accessToken = array.getJSONObject(0).getJSONObject("accessToken").getString("string");
-
-			progressBar.setSelection(100);
-			try { Thread.sleep(100); } catch (InterruptedException e) {}
-						
-			LOG.info("Connected with token: [{}]", accessToken);
+		if( !hasInternetConnection() ){
+			LOG.info("No internet connection");
+			return false;
 		}
-	
-		progressBar.setVisible(false);
+		
+		Client client = new Client();
+
+		MultivaluedMap<String, String> formData = new MultivaluedMapImpl();
+		formData.add("grant_type", GRANT_TYPE);
+		formData.add("username", user);
+		formData.add("password", password);
+		
+		ClientResponse response = client
+				.resource(address + "/auth/token")
+				.type(MediaType.APPLICATION_FORM_URLENCODED_TYPE)
+				.post(ClientResponse.class, formData);
+		
+		if(response.getStatus() != 200){
+			LOG.warn("Bad Response: {}", response.getStatus());
+			return false;
+		}
+		
+		LOG.info("Good response");
+		
+		JSONObject obj = new JSONObject(response.getEntity(String.class));
+		JSONArray array = obj.getJSONArray("api_key");
+
+		accessToken = array.getJSONObject(0).getJSONObject("access_token").getString("string");
+		accessToken = "Bearer " + accessToken;
+					
+		LOG.info("Connected with token: [{}]", accessToken);
+		
 		
 		LOG.info("Login executed");
 		return true;
 	}
 	
 	
-	public boolean sendNextStage(Long item) {
-		String service = "/service/item/nextstage";
+	public boolean sendNextStage(Long item, String filename) {
+		String service = "/item/nextstage";
 		JSONObject obj = new JSONObject();
 		obj.append("id", item);
 		
 		ClientResponse response = put(service, obj);
 		
-		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
-			return true;
-		}
+		boolean success = true;
 		
-		return false;
+		if ( response.getStatus() != ClientResponse.Status.OK.getStatusCode() )
+			success = false;
+		
+		if ( !postSignature(filename, item, null))
+			success = false;
+		
+		deleteFile(filename);
+		
+		return success;
 	}
 	
-	public boolean sendNextStage(Long[] list){
-		String service = "/service/items/nextstage";
+	public boolean sendNextStage(Long[] list, String filename){
+		String service = "/items/nextstage";
 		JSONObject obj = new JSONObject();
 		JSONArray array = new JSONArray(list);
 		obj.append("list", array);
 		
 		ClientResponse response = put(service, obj);
 		
-		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
-			return true;
-		}
+		boolean success = true;
 		
-		return false;
+		if ( response.getStatus() != ClientResponse.Status.OK.getStatusCode() )
+			success = false;
+		
+		if ( !postSignature(filename, array, null))
+			success = false;
+		
+		deleteFile(filename);
+		
+		return success;
 	}
 	
-	public boolean sendStage(Long item, int stage){
-		String service = "/service/item/sendstage";
+	public boolean sendStage(Long item, String stage, String filename){
+		String service = "/item/sendstage";
 		JSONObject obj = new JSONObject();
 		obj.append("id", item);
 		obj.append("stage", stage);
 		
+		boolean success = true;
+		
 		ClientResponse response = put(service, obj);
 		
-		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
-			return true;
-		}
+		if ( response.getStatus() != ClientResponse.Status.OK.getStatusCode() )
+			success = false;
 		
-		return false;
+		
+		if ( !postSignature(filename, item, stage) )
+			success = false;
+		
+		deleteFile(filename);
+		
+		return success;
 	}
 	
-	public boolean sendStage(Long[] list, int stage){
-		String service = "/service/items/sendstage";
+	public boolean sendStage(Long[] list, String stage, String filename){
+		String service = "/items/sendstage";
 		JSONObject obj = new JSONObject();
 		JSONArray array = new JSONArray(list);
 		obj.append("list", array);
 		obj.append("stage", stage);
 		
+		boolean success = true;
+		
 		ClientResponse response = put(service, obj);
 		
-		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
-			return true;
-		}
+		if ( response.getStatus() != ClientResponse.Status.OK.getStatusCode() )
+			success = false;
 		
-		return false;
+		if ( !postSignature(filename, array, stage))
+			success = false;
+		
+		deleteFile(filename);
+		
+		return success;
 	}
 	
 	public JSONObject getItem(Long item){
-		String service = "/service/item/";
+		String service = "/item/";
 		ClientResponse response = get(service, item);
 		
 		if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ){
@@ -186,7 +195,7 @@ public class Server {
 	}
 		
 	public JSONObject getItems(Long[] list){
-		String service = "/service/item/";
+		String service = "/item/";
 		JSONObject obj = new JSONObject();
 		JSONArray array = new JSONArray(list);
 		
@@ -201,6 +210,50 @@ public class Server {
 		return null;
 	}
 	
+	private boolean postSignature(String filename, long item, String stage){
+		File file = new File(filename);
+		
+		FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
+		FileDataBodyPart fdp = new FileDataBodyPart("file", file, MediaType.APPLICATION_OCTET_STREAM_TYPE);
+		formDataMultiPart.bodyPart(fdp);
+		formDataMultiPart.field("item", String.valueOf(item));
+		formDataMultiPart.field("stage", stage);
+		
+		Client client = new Client();
+		ClientResponse response = client
+				.resource(address + "/signature")
+				.header("Authorization", String.format("Bearer %s", accessToken))
+				.type(MediaType.MULTIPART_FORM_DATA_TYPE)
+				.post(ClientResponse.class, formDataMultiPart);
+		
+		if(response.getStatus() == ClientResponse.Status.OK.getStatusCode())
+			return true;
+		else
+			return false;
+	}
+	
+	private boolean postSignature(String filename, JSONArray items, String stage){
+		File file = new File(filename);
+		
+		FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
+		FileDataBodyPart fdp = new FileDataBodyPart("file", file, MediaType.APPLICATION_OCTET_STREAM_TYPE);
+		formDataMultiPart.bodyPart(fdp);
+		formDataMultiPart.field("items", items, MediaType.APPLICATION_JSON_TYPE);
+		formDataMultiPart.field("stage", stage);
+		
+		Client client = new Client();
+		ClientResponse response = client
+				.resource(address + "/signature/multi")
+				.header("Authorization", String.format("Bearer %s", accessToken))
+				.type(MediaType.MULTIPART_FORM_DATA_TYPE)
+				.post(ClientResponse.class, formDataMultiPart);
+		
+		if(response.getStatus() == ClientResponse.Status.OK.getStatusCode())
+			return true;
+		else
+			return false;
+	}
+	
 	/**
 	 * Determine if server is connected.
 	 * @return
@@ -210,6 +263,17 @@ public class Server {
 			return true;
 		else
 			return false;
+	}
+	
+	
+	/**
+	 * Deletes the given file.
+	 * 
+	 * @param filename - absolute filename
+	 */
+	private void deleteFile(String filename){
+		File file = new File(filename);
+		file.delete();
 	}
 	
 	
